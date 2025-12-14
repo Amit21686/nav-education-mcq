@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <title>NAV Education – MCQ Test</title>
 
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e88e5">
+
 <style>
 body {
   margin: 0;
@@ -12,70 +15,31 @@ body {
   color: #ffffff;
   text-align: center;
 }
-
-h1 {
-  margin-top: 20px;
-}
-
 .container {
   max-width: 650px;
   margin: auto;
   padding: 20px;
 }
-
-input[type="text"] {
-  width: 90%;
+input, button {
   padding: 10px;
   font-size: 16px;
-  margin: 10px 0;
-  border-radius: 6px;
-  border: none;
+  margin-top: 10px;
 }
-
 button {
-  padding: 10px 20px;
-  font-size: 16px;
   background: #1e88e5;
   color: white;
   border: none;
   border-radius: 6px;
-  cursor: pointer;
-  margin-top: 10px;
 }
-
-button:hover {
-  background: #1565c0;
-}
-
 .option {
   display: block;
   background: #1f1f1f;
   padding: 10px;
   margin: 8px 0;
   border-radius: 6px;
-  cursor: pointer;
   text-align: left;
 }
-
-#timer {
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-th, td {
-  border: 1px solid #333;
-  padding: 8px;
-}
-
-th {
-  background: #1e88e5;
-}
+#timer { font-weight: bold; }
 </style>
 </head>
 
@@ -85,222 +49,150 @@ th {
 
 <div class="container">
 
-  <!-- START -->
-  <div id="startScreen">
-    <input type="text" id="studentName" placeholder="Enter your name">
-    <br>
-    <button onclick="startQuiz()">Start Test</button>
-  </div>
+<div id="start">
+  <input id="name" placeholder="Enter your name">
+  <br>
+  <button onclick="start()">Start Test</button>
+</div>
 
-  <!-- QUIZ -->
-  <div id="quizScreen" style="display:none;">
-    <div id="timer"></div>
-    <h3 id="question"></h3>
-    <div id="options"></div>
-    <button onclick="nextQuestion()">Next</button>
-  </div>
+<div id="quiz" style="display:none;">
+  <div id="timer"></div>
+  <h3 id="q"></h3>
+  <div id="opts"></div>
+  <button onclick="next()">Next</button>
+</div>
 
-  <!-- END -->
-  <div id="endScreen" style="display:none;">
-    <h2>Test Submitted</h2>
-    <p>Your score has been recorded.</p>
-    <button onclick="loadLeaderboard()">View Leaderboard</button>
-  </div>
-
-  <!-- LEADERBOARD -->
-  <div id="leaderboard" style="display:none;">
-    <h2>Top 10 Leaderboard</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Rank</th>
-          <th>Name</th>
-          <th>Score</th>
-          <th>Time (s)</th>
-        </tr>
-      </thead>
-      <tbody id="boardBody"></tbody>
-    </table>
-  </div>
+<div id="end" style="display:none;">
+  <h2>Test Submitted</h2>
+  <p>
+    Your result is saved safely.<br>
+    It will upload automatically when you open this app again
+    while the server is online.
+  </p>
+</div>
 
 </div>
 
 <script>
 /* ================= CONFIG ================= */
 
-// ⚠️ PASTE YOUR *NEW* GITHUB PAT HERE (ONLY THIS LINE)
-const GITHUB_TOKEN = "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";
-
-const GITHUB_USER = "amit21686";
-const REPO_NAME = "nav-education-mcq";
-const FILE_PATH = "leaderboard.json";
-const BRANCH = "main";
-
-/* ================= QUIZ SETTINGS ================= */
-
-const TOTAL_QUESTIONS = 10;
-const TOTAL_TIME = 10 * 60;
+// CHANGE ONLY THIS (Termux server)
+const SERVER_URL = "http://YOUR_TERMUX_IP:3000";
 
 /* ================= QUESTIONS ================= */
 
 const questions = [
   {
     q: "Human heart has how many chambers?",
-    options: ["2", "3", "4", "5"],
-    answer: 2
+    o: ["2","3","4","5"],
+    a: 2
   },
   {
-    q: "DNA full form is?",
-    options: [
-      "Deoxyribo Nucleic Acid",
-      "Dioxy Acid",
-      "Dynamic Acid",
-      "None"
-    ],
-    answer: 0
+    q: "DNA full form?",
+    o: ["Deoxyribo Nucleic Acid","Dioxy Acid","Dynamic Acid","None"],
+    a: 0
   }
-  // Add remaining questions (total 10)
 ];
 
 /* ================= VARIABLES ================= */
 
-let index = 0;
-let score = 0;
-let timeLeft = TOTAL_TIME;
-let timerInterval;
+let i = 0, score = 0;
+let time = 10 * 60;
+let timer;
 
-/* ================= QUIZ LOGIC ================= */
+/* ================= QUIZ ================= */
 
-function startQuiz() {
-  const name = document.getElementById("studentName").value.trim();
-  if (!name) {
-    alert("Enter your name");
-    return;
-  }
+function start() {
+  const n = name.value.trim();
+  if (!n) return alert("Enter name");
 
-  localStorage.setItem("studentName", name);
-
-  document.getElementById("startScreen").style.display = "none";
-  document.getElementById("quizScreen").style.display = "block";
-
-  startTimer();
-  showQuestion();
+  localStorage.setItem("student", n);
+  start.style.display = "none";
+  quiz.style.display = "block";
+  tick();
+  show();
 }
 
-function startTimer() {
-  updateTimer();
-  timerInterval = setInterval(() => {
-    timeLeft--;
-    updateTimer();
-    if (timeLeft <= 0) finishQuiz();
+function tick() {
+  timer = setInterval(() => {
+    time--;
+    timerDiv.innerText = `Time: ${time}s`;
+    if (time <= 0) finish();
   }, 1000);
 }
 
-function updateTimer() {
-  const m = Math.floor(timeLeft / 60);
-  const s = timeLeft % 60;
-  document.getElementById("timer").innerText =
-    `Time Left: ${m}:${s < 10 ? "0" + s : s}`;
-}
-
-function showQuestion() {
-  const q = questions[index];
-  document.getElementById("question").innerText = q.q;
-
-  const optDiv = document.getElementById("options");
-  optDiv.innerHTML = "";
-
-  q.options.forEach((opt, i) => {
-    optDiv.innerHTML += `
+function show() {
+  q.innerText = questions[i].q;
+  opts.innerHTML = "";
+  questions[i].o.forEach((x,j)=>{
+    opts.innerHTML += `
       <label class="option">
-        <input type="radio" name="opt" value="${i}"> ${opt}
-      </label>
-    `;
+        <input type="radio" name="o" value="${j}"> ${x}
+      </label>`;
   });
 }
 
-function nextQuestion() {
-  const selected = document.querySelector("input[name='opt']:checked");
-  if (selected && Number(selected.value) === questions[index].answer) {
-    score++;
-  }
-
-  index++;
-  if (index < questions.length) {
-    showQuestion();
-  } else {
-    finishQuiz();
-  }
+function next() {
+  const sel = document.querySelector("input[name=o]:checked");
+  if (sel && Number(sel.value) === questions[i].a) score++;
+  i++;
+  if (i < questions.length) show();
+  else finish();
 }
 
-function finishQuiz() {
-  clearInterval(timerInterval);
-  document.getElementById("quizScreen").style.display = "none";
-  document.getElementById("endScreen").style.display = "block";
+function finish() {
+  clearInterval(timer);
+  quiz.style.display = "none";
+  end.style.display = "block";
 
-  const name = localStorage.getItem("studentName");
-  const timeTaken = TOTAL_TIME - timeLeft;
+  saveOffline({
+    name: localStorage.getItem("student"),
+    score,
+    time: (10*60 - time)
+  });
 
-  saveResult(name, score, timeTaken);
+  trySync();
 }
 
-/* ================= GITHUB LEADERBOARD ================= */
+/* ================= OFFLINE QUEUE ================= */
 
-async function saveResult(name, score, time) {
-  const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/contents/${FILE_PATH}`;
+function saveOffline(data) {
+  let q = JSON.parse(localStorage.getItem("queue")) || [];
+  q.push(data);
+  localStorage.setItem("queue", JSON.stringify(q));
+}
 
-  const res = await fetch(apiUrl);
-  const data = await res.json();
+/* ================= AUTO SYNC ================= */
 
-  const content = JSON.parse(atob(data.content));
-  content.push({ name, score, time, date: new Date().toISOString() });
+function trySync() {
+  let q = JSON.parse(localStorage.getItem("queue")) || [];
+  if (!q.length) return;
 
-  const updated = btoa(JSON.stringify(content, null, 2));
-
-  await fetch(apiUrl, {
-    method: "PUT",
-    headers: {
-      "Authorization": "token " + GITHUB_TOKEN,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      message: "Add quiz result",
-      content: updated,
-      sha: data.sha,
-      branch: BRANCH
+  fetch(SERVER_URL + "/ping")
+    .then(()=>{
+      q.forEach(item=>{
+        fetch(SERVER_URL,{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(item)
+        }).then(()=>{
+          q.shift();
+          localStorage.setItem("queue",JSON.stringify(q));
+        });
+      });
     })
-  });
+    .catch(()=>{});
 }
 
-async function loadLeaderboard() {
-  document.getElementById("leaderboard").style.display = "block";
+window.addEventListener("load", trySync);
+window.addEventListener("online", trySync);
+</script>
 
-  const rawUrl =
-    `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/${BRANCH}/${FILE_PATH}`;
-
-  const res = await fetch(rawUrl);
-  let data = await res.json();
-
-  data.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return a.time - b.time;
-  });
-
-  const tbody = document.getElementById("boardBody");
-  tbody.innerHTML = "";
-
-  data.slice(0, 10).forEach((item, i) => {
-    tbody.innerHTML += `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${item.name}</td>
-        <td>${item.score}</td>
-        <td>${item.time}</td>
-      </tr>
-    `;
-  });
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js");
 }
 </script>
 
 </body>
-  </html>
+</html>
