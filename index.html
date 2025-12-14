@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -39,7 +40,10 @@ button {
   border-radius: 6px;
   text-align: left;
 }
-#timer { font-weight: bold; }
+#timer {
+  font-weight: bold;
+  margin-bottom: 10px;
+}
 </style>
 </head>
 
@@ -49,25 +53,28 @@ button {
 
 <div class="container">
 
+<!-- START -->
 <div id="start">
-  <input id="name" placeholder="Enter your name">
+  <input id="studentName" placeholder="Enter your name">
   <br>
-  <button onclick="start()">Start Test</button>
+  <button onclick="startQuiz()">Start Test</button>
 </div>
 
+<!-- QUIZ -->
 <div id="quiz" style="display:none;">
   <div id="timer"></div>
-  <h3 id="q"></h3>
-  <div id="opts"></div>
-  <button onclick="next()">Next</button>
+  <h3 id="question"></h3>
+  <div id="options"></div>
+  <button onclick="nextQuestion()">Next</button>
 </div>
 
+<!-- END -->
 <div id="end" style="display:none;">
   <h2>Test Submitted</h2>
   <p>
     Your result is saved safely.<br>
-    It will upload automatically when you open this app again
-    while the server is online.
+    It will upload automatically next time you open this app
+    when the server is online.
   </p>
 </div>
 
@@ -76,8 +83,12 @@ button {
 <script>
 /* ================= CONFIG ================= */
 
-// CHANGE ONLY THIS (Termux server)
+// CHANGE ONLY THIS
 const SERVER_URL = "http://YOUR_TERMUX_IP:3000";
+
+/* ================= SETTINGS ================= */
+
+const TOTAL_TIME = 10 * 60; // 10 minutes
 
 /* ================= QUESTIONS ================= */
 
@@ -88,100 +99,142 @@ const questions = [
     a: 2
   },
   {
-    q: "DNA full form?",
-    o: ["Deoxyribo Nucleic Acid","Dioxy Acid","Dynamic Acid","None"],
+    q: "DNA full form is?",
+    o: [
+      "Deoxyribo Nucleic Acid",
+      "Dioxy Acid",
+      "Dynamic Acid",
+      "None"
+    ],
     a: 0
   }
 ];
 
 /* ================= VARIABLES ================= */
 
-let i = 0, score = 0;
-let time = 10 * 60;
-let timer;
+let index = 0;
+let score = 0;
+let timeLeft = TOTAL_TIME;
+let timer = null;
 
-/* ================= QUIZ ================= */
+/* ================= QUIZ LOGIC ================= */
 
-function start() {
-  const n = name.value.trim();
-  if (!n) return alert("Enter name");
+function startQuiz() {
+  if (timer) return;
 
-  localStorage.setItem("student", n);
-  start.style.display = "none";
-  quiz.style.display = "block";
-  tick();
-  show();
+  const name = document.getElementById("studentName").value.trim();
+  if (!name) {
+    alert("Enter your name");
+    return;
+  }
+
+  localStorage.setItem("studentName", name);
+
+  document.getElementById("start").style.display = "none";
+  document.getElementById("quiz").style.display = "block";
+
+  startTimer();
+  showQuestion();
 }
 
-function tick() {
+function startTimer() {
+  updateTimer();
   timer = setInterval(() => {
-    time--;
-    timerDiv.innerText = `Time: ${time}s`;
-    if (time <= 0) finish();
+    timeLeft--;
+    updateTimer();
+    if (timeLeft <= 0) finishQuiz();
   }, 1000);
 }
 
-function show() {
-  q.innerText = questions[i].q;
-  opts.innerHTML = "";
-  questions[i].o.forEach((x,j)=>{
-    opts.innerHTML += `
+function updateTimer() {
+  document.getElementById("timer").innerText =
+    `Time Left: ${timeLeft}s`;
+}
+
+function showQuestion() {
+  const q = questions[index];
+  document.getElementById("question").innerText = q.q;
+
+  const optDiv = document.getElementById("options");
+  optDiv.innerHTML = "";
+
+  q.o.forEach((opt, i) => {
+    optDiv.innerHTML += `
       <label class="option">
-        <input type="radio" name="o" value="${j}"> ${x}
-      </label>`;
+        <input type="radio" name="opt" value="${i}"> ${opt}
+      </label>
+    `;
   });
 }
 
-function next() {
-  const sel = document.querySelector("input[name=o]:checked");
-  if (sel && Number(sel.value) === questions[i].a) score++;
-  i++;
-  if (i < questions.length) show();
-  else finish();
+function nextQuestion() {
+  const selected =
+    document.querySelector("input[name='opt']:checked");
+
+  if (selected && Number(selected.value) === questions[index].a) {
+    score++;
+  }
+
+  index++;
+  if (index < questions.length) {
+    showQuestion();
+  } else {
+    finishQuiz();
+  }
 }
 
-function finish() {
+function finishQuiz() {
   clearInterval(timer);
-  quiz.style.display = "none";
-  end.style.display = "block";
 
-  saveOffline({
-    name: localStorage.getItem("student"),
-    score,
-    time: (10*60 - time)
-  });
+  document.getElementById("quiz").style.display = "none";
+  document.getElementById("end").style.display = "block";
 
+  const result = {
+    name: localStorage.getItem("studentName"),
+    score: score,
+    time: TOTAL_TIME - timeLeft,
+    date: new Date().toISOString()
+  };
+
+  saveOffline(result);
   trySync();
 }
 
 /* ================= OFFLINE QUEUE ================= */
 
 function saveOffline(data) {
-  let q = JSON.parse(localStorage.getItem("queue")) || [];
-  q.push(data);
-  localStorage.setItem("queue", JSON.stringify(q));
+  let queue = JSON.parse(localStorage.getItem("pendingQueue")) || [];
+  queue.push(data);
+  localStorage.setItem("pendingQueue", JSON.stringify(queue));
 }
 
 /* ================= AUTO SYNC ================= */
 
-function trySync() {
-  let q = JSON.parse(localStorage.getItem("queue")) || [];
-  if (!q.length) return;
+async function trySync() {
+  let queue = JSON.parse(localStorage.getItem("pendingQueue")) || [];
+  if (!queue.length) return;
 
-  fetch(SERVER_URL + "/ping")
-    .then(()=>{
-      q.forEach(item=>{
-        fetch(SERVER_URL,{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify(item)
-        }).then(()=>{
-          q.shift();
-          localStorage.setItem("queue",JSON.stringify(q));
-        });
+  try {
+    await fetch(SERVER_URL + "/ping");
+
+    while (queue.length) {
+      const item = queue[0];
+
+      await fetch(SERVER_URL, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(item)
       });
-    })
-    .catch(()=>{});
+
+      queue.shift();
+      localStorage.setItem(
+        "pendingQueue",
+        JSON.stringify(queue)
+      );
+    }
+  } catch (e) {
+    // Server offline → wait
+  }
 }
 
 window.addEventListener("load", trySync);
