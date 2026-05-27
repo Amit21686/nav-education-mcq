@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000';
+const API_URL = 'https://my-quiz-backend-f43f.onrender.com';
 const userId = localStorage.getItem('quiz_userId');
 const roomCode = localStorage.getItem('quiz_roomCode');
 
