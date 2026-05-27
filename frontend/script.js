@@ -1,4 +1,4 @@
-const API_URL = 'https://my-quiz-backend-f43f.onrender.com';
+const API_URL = 'https://my-quiz-backend-f43f.onrender.com'; // <--- CHANGE THIS
 const userId = localStorage.getItem('quiz_userId');
 const roomCode = localStorage.getItem('quiz_roomCode');
 
@@ -9,11 +9,11 @@ document.getElementById('display-room').innerText = roomCode;
 async function fetchStatus() {
     try {
         const res = await fetch(`${API_URL}/quiz-status?roomCode=${roomCode}`);
+        if (!res.ok) return;
         const data = await res.json();
-
         updateUI(data);
     } catch (err) {
-        console.error("Error fetching status:", err);
+        console.error("Polling error:", err);
     }
 }
 
@@ -24,76 +24,107 @@ function updateUI(data) {
     const container = document.getElementById('options-container');
     container.innerHTML = '';
 
-    // Handle reveal state
     const isRevealing = data.status === 'revealing';
+
+    // Show/Hide the "Next Question" Overlay
+    const overlay = document.getElementById('result-overlay');
     if (isRevealing) {
-        document.getElementById('result-overlay').classList.remove('hidden');
+        overlay.classList.remove('hidden');
     } else {
-        document.getElementById('result-overlay').classList.add('hidden');
+        overlay.classList.add('hidden');
     }
 
     data.options.forEach((opt, index) => {
         const btn = document.createElement('div');
         btn.className = 'option-btn';
         
-        // Color Logic for Results
         if (isRevealing) {
-            if (index === data.correctIndex) btn.classList.add('correct');
-            else if (index === mySelectedAnswer) btn.classList.add('wrong');
+            // RESULT PHASE
+            if (index === data.correctIndex) {
+                btn.classList.add('correct');
+            } else if (index === mySelectedAnswer) {
+                btn.classList.add('wrong');
+            }
         } else {
-            if (index === mySelectedAnswer) btn.classList.add('selected');
+            // ANSWERING PHASE
+            if (index === mySelectedAnswer) {
+                btn.classList.add('selected');
+            }
             btn.onclick = () => selectAnswer(index);
         }
 
-        // Display users who chose this option
+        // Find all users who picked this option
         let usersWhoChose = [];
         for (let id in data.answers) {
             if (data.answers[id] === index) {
-                usersWhoChose.push(data.players[id].name);
+                const playerName = data.players[id] ? data.players[id].name : "Unknown";
+                usersWhoChose.push(playerName);
             }
         }
 
         btn.innerHTML = `
-            <strong>${String.fromCharCode(65 + index)}. ${opt}</strong> ${isRevealing && index === data.correctIndex ? ' ✅' : ''}
-            <span class="user-list">${usersWhoChose.join(', ')}</span>
+            <div>
+                <strong>${String.fromCharCode(65 + index)}. ${opt}</strong>
+                ${isRevealing && index === data.correctIndex ? ' ✅' : ''}
+            </div>
+            <span class="user-list">
+                ${usersWhoChose.length > 0 ? '👤 ' + usersWhoChose.join(', ') : ''}
+            </span>
         `;
         container.appendChild(btn);
     });
 
-    // Update Waiting List
+    // Handle "Waiting for players" section
+    const waitingArea = document.getElementById('waiting-area');
     const pendingList = document.getElementById('pending-players');
     pendingList.innerHTML = '';
-    
-    const pendingPlayers = Object.values(data.players).filter(p => !p.answered);
-    
-    if (pendingPlayers.length === 0 && !isRevealing) {
-        document.getElementById('waiting-area').innerHTML = "<h3>All Players Answered!</h3>";
+
+    if (isRevealing) {
+        waitingArea.innerHTML = "<h3>Results Revealed!</h3>";
     } else {
-        document.getElementById('waiting-area').innerHTML = "<h3>Waiting for:</h3>";
-        pendingPlayers.forEach(p => {
-            const li = document.createElement('li');
-            li.innerText = p.name;
-            pendingList.appendChild(li);
-        });
+        const pendingPlayers = Object.values(data.players).filter(p => !p.answered);
+        if (pendingPlayers.length === 0) {
+            waitingArea.innerHTML = "<h3>🎉 All players answered! Revealing soon...</h3>";
+        } else {
+            waitingArea.innerHTML = "<h3>Waiting for:</h3>";
+            pendingPlayers.forEach(p => {
+                const li = document.createElement('li');
+                li.innerText = p.name;
+                pendingList.appendChild(li);
+            });
+        }
     }
 }
 
 async function selectAnswer(index) {
     mySelectedAnswer = index;
-    await fetch(`${API_URL}/submit-answer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomCode, userId, answerIndex: index })
-    });
+    try {
+        await fetch(`${API_URL}/submit-answer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomCode, userId, answerIndex: index })
+        });
+    } catch (e) {
+        alert("Failed to submit answer");
+    }
 }
 
 async function nextQuestion() {
+    // Reset local selection
     mySelectedAnswer = null;
-    await fetch(`${API_URL}/next-question`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomCode })
-    });
+    try {
+        const res = await fetch(`${API_URL}/next-question`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomCode })
+        });
+        if (res.ok) {
+            // Force an immediate update after moving to next question
+            fetchStatus();
+        }
+    } catch (e) {
+        alert("Error moving to next question");
+    }
 }
 
 // Poll every 1 second
