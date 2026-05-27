@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizLive - Join</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🚀 Quiz<span>Live</span></h1>
+            <p>Join a room and compete in real-time!</p>
+            <div class="input-group">
+                <input type="text" id="username" placeholder="Enter your name">
+                <input type="text" id="roomCode" placeholder="Enter room code">
+                <button onclick="joinRoom()">Join Quiz</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function joinRoom() {
+            const username = document.getElementById('username').value;
+            const roomCode = document.getElementById('roomCode').value;
+            if(!username || !roomCode) return alert("Please fill all fields");
+
+            const res = await fetch('http://localhost:3000/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, roomCode })
+            });
+            const data = await res.json();
+            
+            localStorage.setItem('quiz_userId', data.userId);
+            localStorage.setItem('quiz_roomCode', data.roomCode);
+            window.location.href = 'quiz.html';
+        }
+    </script>
+</body>
+</html>
