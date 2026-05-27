@@ -1,77 +1,49 @@
-:root {
-    --bg-color: #0f172a;
-    --card-bg: #1e293b;
-    --primary: #6366f1;
-    --success: #22c55e;
-    --danger: #ef4444;
-    --text: #f8fafc;
-    --text-muted: #94a3b8;
-}
-
-body {
-    margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--bg-color); color: var(--text);
-    display: flex; justify-content: center; align-items: center; min-height: 100vh;
-}
-
-.container { width: 90%; max-width: 600px; text-align: center; }
-
-.card {
-    background: var(--card-bg); padding: 2rem; border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-}
-
-h1 span { color: var(--primary); }
-
-.input-group { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
-
-input {
-    padding: 12px; border-radius: 8px; border: 1px solid #334155;
-    background: #0f172a; color: white; font-size: 1rem;
-}
-
-button {
-    padding: 12px; border-radius: 8px; border: none;
-    background: var(--primary); color: white; font-weight: bold;
-    cursor: pointer; transition: 0.3s;
-}
-
-button:hover { opacity: 0.9; transform: translateY(-2px); }
-
-/* Quiz Screen */
-.header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-.timer { 
-    background: var(--primary); padding: 5px 15px; 
-    border-radius: 20px; font-weight: bold; font-size: 1.2rem; 
-}
-
-.question-card { background: var(--card-bg); padding: 20px; border-radius: 20px; }
-
-.options-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 20px; }
-
+/* Add or update these in your style.css */
 .option-btn {
-    background: #334155; color: white; padding: 15px; text-align: left;
-    border: 2px solid transparent; border-radius: 10px; cursor: pointer;
-    transition: 0.2s; position: relative;
+    background: #334155; 
+    color: white; 
+    padding: 15px; 
+    text-align: left;
+    border: 2px solid transparent; 
+    border-radius: 12px; 
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
 }
 
-.option-btn.selected { border-color: var(--primary); background: #475569; }
-.option-btn.correct { background: var(--success) !important; border-color: #166534; }
-.option-btn.wrong { background: var(--danger) !important; border-color: #991b1b; }
+.option-btn.selected { border-color: #6366f1; background: #475569; }
+.option-btn.correct { 
+    background: #16a34a !important; /* Strong Green */
+    border-color: #14532d; 
+    transform: scale(1.02);
+}
+.option-btn.wrong { 
+    background: #dc2626 !important; /* Strong Red */
+    border-color: #7f1d1d; 
+}
 
 .user-list { 
-    font-size: 0.8rem; color: #cbd5e1; margin-top: 5px; 
-    display: block; opacity: 0.8;
+    font-size: 0.85rem; 
+    color: #f1f5f9; 
+    margin-top: 8px; 
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+    font-style: italic;
+    display: block;
 }
 
-.waiting-area { margin-top: 20px; color: var(--text-muted); }
-#pending-players { list-style: none; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-#pending-players li { background: #334155; padding: 5px 10px; border-radius: 5px; }
-
 .overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8); display: flex; justify-content: center;
+    position: fixed; 
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.9); 
+    display: flex; justify-content: center;
     align-items: center; z-index: 100;
 }
 .overlay.hidden { display: none; }
-.overlay-content { background: var(--card-bg); padding: 30px; border-radius: 20px; text-align: center; }
+.overlay-content { 
+    background: #1e293b; padding: 30px; 
+    border-radius: 20px; text-align: center; 
+    border: 2px solid #6366f1;
+}
