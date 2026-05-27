@@ -16,22 +16,23 @@
 
             <div class="question-card">
                 <h2 id="question-text">Loading question...</h2>
-                <div id="options-container" class="options-grid"></div>
+                <div id="options-container" class="options-grid">
+                    <!-- Options injected by JS -->
+                </div>
             </div>
 
             <div id="waiting-area" class="waiting-area">
                 <h3>Waiting for players...</h3>
                 <ul id="pending-players"></ul>
             </div>
-
-            <div id="result-overlay" class="overlay hidden">
-                <div class="overlay-content">
-                    <h2>Time's Up!</h2>
-                    <button onclick="nextQuestion()">Next Question ➔</button>
-                </div>
-            </div>
         </div>
     </div>
+
+    <!-- REPLACED OVERLAY WITH THIS BUTTON -->
+    <div id="next-btn-container" class="next-btn-container hidden">
+        <button class="next-btn" onclick="nextQuestion()">Next Question ➔</button>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
