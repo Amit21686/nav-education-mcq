@@ -3,37 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QuizLive - Join</title>
+    <title>QuizLive - Join Room</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Adding a small style for the loading state */
+        .loading-text {
+            display: none;
+            color: #fbbf24;
+            margin-top: 10px;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
             <h1>🚀 Quiz<span>Live</span></h1>
             <p>Join a room and compete in real-time!</p>
+            
             <div class="input-group">
-                <input type="text" id="username" placeholder="Enter your name">
-                <input type="text" id="roomCode" placeholder="Enter room code">
-                <button onclick="joinRoom()">Join Quiz</button>
+                <input type="text" id="username" placeholder="Enter your name" autocomplete="off">
+                <input type="text" id="roomCode" placeholder="Enter room code" autocomplete="off">
+                <button id="joinBtn" onclick="joinRoom()">Join Quiz</button>
+                <div id="loading" class="loading-text">Connecting to server... please wait...</div>
             </div>
         </div>
     </div>
+
     <script>
         async function joinRoom() {
-            const username = document.getElementById('username').value;
-            const roomCode = document.getElementById('roomCode').value;
-            if(!username || !roomCode) return alert("Please fill all fields");
+            // 1. REPLACE THIS URL with your actual Render URL (Must start with https://)
+            const API_URL = 'https://my-quiz-backend-f43f.onrender.com'; 
 
-            const res = await fetch('http://localhost:3000/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, roomCode })
-            });
-            const data = await res.json();
-            
-            localStorage.setItem('quiz_userId', data.userId);
-            localStorage.setItem('quiz_roomCode', data.roomCode);
-            window.location.href = 'quiz.html';
+            const usernameInput = document.getElementById('username');
+            const roomCodeInput = document.getElementById('roomCode');
+            const joinBtn = document.getElementById('joinBtn');
+            const loadingDiv = document.getElementById('loading');
+
+            const username = usernameInput.value.trim();
+            const roomCode = roomCodeInput.value.trim();
+
+            // Basic validation
+            if (!username || !roomCode) {
+                alert("❌ Please enter both your name and the room code!");
+                return;
+            }
+
+            // UI feedback: Disable button and show loading
+            joinBtn.disabled = true;
+            joinBtn.style.opacity = "0.5";
+            loadingDiv.style.display = "block";
+
+            try {
+                // We add a timeout because Render free tier can be very slow to wake up
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+                const response = await fetch(`${API_URL}/join`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify({ username, roomCode }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`Server Error: ${response.status} - ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                // Store user and room info in browser memory
+                localStorage.setItem('quiz_userId', data.userId);
+                localStorage.setItem('quiz_roomCode', data.roomCode);
+
+                alert("✅ Joined successfully! Redirecting...");
+                window.location.href = 'quiz.html';
+
+            } catch (error) {
+                console.error("Join Error:", error);
+                
+                if (error.name === 'AbortError') {
+                    alert("⌛ Request timed out. Render servers take about 50 seconds to 'wake up' the first time. Please try clicking Join again.");
+                } else if (error.message.includes('Failed to fetch')) {
+                    alert("❌ Cannot connect to server. \n\nPossible reasons:\n1. Your API_URL in index.html is wrong.\n2. Your Render server is still starting up.\n3. You are using http instead of https.");
+                } else {
+                    alert("❌ Error: " + error.message);
+                }
+            } finally {
+                // Reset UI
+                joinBtn.disabled = false;
+                joinBtn.style.opacity = "1";
+                loadingDiv.style.display = "none";
+            }
         }
     </script>
 </body>
